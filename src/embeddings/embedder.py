@@ -1,42 +1,25 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Iterable
 
 import numpy as np
 
 
-class TextEmbedder:
-    def __init__(self, model_name: str = "sentence-transformers/all-mpnet-base-v2", fallback_dim: int = 384):
+class MultimodalEmbedder:
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
         self.model_name = model_name
-        self.fallback_dim = fallback_dim
-        self.model = None
-        try:
-            from sentence_transformers import SentenceTransformer
+        from sentence_transformers import SentenceTransformer
 
-            for candidate in [
-                model_name,
-                "sentence-transformers/all-MiniLM-L6-v2",
-            ]:
-                try:
-                    self.model = SentenceTransformer(candidate)
-                    self.model_name = candidate
-                    break
-                except Exception:
-                    self.model = None
-        except Exception:
-            self.model = None
+        self.model = SentenceTransformer(model_name)
 
-    def encode(self, texts: Iterable[str]) -> np.ndarray:
-        texts = list(texts)
-        if self.model is not None:
-            return np.array(self.model.encode(texts, normalize_embeddings=True))
-        return np.vstack([self._hash_embed(t) for t in texts])
-
-    def _hash_embed(self, text: str) -> np.ndarray:
-        vec = np.zeros(self.fallback_dim, dtype=np.float32)
-        for token in text.lower().split():
-            h = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16)
-            vec[h % self.fallback_dim] += 1.0
-        norm = np.linalg.norm(vec)
-        return vec / norm if norm > 0 else vec
+    def encode(self, texts: Iterable[str], batch_size: int = 32) -> np.ndarray:
+        texts = [str(t) for t in texts]
+        if not texts:
+            return np.empty((0, 384), dtype=np.float32)
+        vectors = self.model.encode(
+            texts,
+            batch_size=batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return np.array(vectors, dtype=np.float32)
