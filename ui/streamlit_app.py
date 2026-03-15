@@ -10,6 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.pipeline.pipeline_runner import PipelineRunner
+from src.utils.video_utils import build_combined_clip
 
 
 def score_label(score: float) -> str:
@@ -49,6 +50,8 @@ if "playback_timestamp" not in st.session_state:
     st.session_state.playback_timestamp = None
 if "active_video_path" not in st.session_state:
     st.session_state.active_video_path = None
+if "combined_clip_path" not in st.session_state:
+    st.session_state.combined_clip_path = None
 
 paths = runner.config["paths"]
 default_video_path = paths["video_path"]
@@ -124,7 +127,31 @@ if st.button("🔎 Search", use_container_width=True):
         st.session_state.search_results = None
         st.error(f"Search failed: {exc}")
 
+
+active_video_path = st.session_state.active_video_path or video_path
 results = st.session_state.search_results
+
+if results:
+    st.subheader("Playback options")
+    playback_mode = st.radio(
+        "Choose clip to play",
+        options=["First matching clip", "Combined matching clips"],
+        horizontal=True,
+    )
+
+    if playback_mode == "Combined matching clips":
+        selected_timestamps = [float(row["timestamp_sec"]) for row in results]
+        combined_path = Path("data/output/combined_matches.mp4")
+        clip_path = build_combined_clip(
+            video_path=active_video_path or video_path,
+            timestamps=selected_timestamps,
+            output_path=str(combined_path),
+            clip_duration_sec=2.0,
+        )
+        st.session_state.combined_clip_path = clip_path
+    else:
+        st.session_state.combined_clip_path = None
+
 if results is not None:
     if not results:
         st.warning("No results found. Build the index first or use a different query.")
@@ -147,7 +174,13 @@ if results is not None:
 
 playback_timestamp = st.session_state.playback_timestamp
 active_video_path = st.session_state.active_video_path or video_path
-if playback_timestamp is not None and active_video_path:
+combined_clip_path = st.session_state.combined_clip_path
+
+if combined_clip_path:
+    st.subheader("Video playback")
+    st.caption("Showing merged clips from matching frames")
+    st.video(combined_clip_path)
+elif playback_timestamp is not None and active_video_path:
     st.subheader("Video playback")
     st.caption(f"Jumped to {playback_timestamp}s")
     st.video(active_video_path, start_time=playback_timestamp)
