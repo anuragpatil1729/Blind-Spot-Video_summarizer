@@ -43,6 +43,12 @@ runner = PipelineRunner()
 
 if "build_result" not in st.session_state:
     st.session_state.build_result = None
+if "search_results" not in st.session_state:
+    st.session_state.search_results = None
+if "playback_timestamp" not in st.session_state:
+    st.session_state.playback_timestamp = None
+if "active_video_path" not in st.session_state:
+    st.session_state.active_video_path = None
 
 paths = runner.config["paths"]
 default_video_path = paths["video_path"]
@@ -79,6 +85,7 @@ with left:
                     ollama_base_url=ollama_base_url,
                     ollama_model=ollama_model,
                 )
+                st.session_state.active_video_path = video_path
                 st.success("Index built successfully.")
             except Exception as exc:
                 st.session_state.build_result = None
@@ -112,22 +119,35 @@ with options_col:
 
 if st.button("🔎 Search", use_container_width=True):
     try:
-        results = runner.query(query, top_k=int(top_k), min_score=float(min_score))
-        if not results:
-            st.warning("No results found. Build the index first or use a different query.")
-        else:
-            st.subheader("Search results")
-            for i, row in enumerate(results, 1):
-                with st.container(border=True):
-                    score = float(row["score"])
-                    st.markdown(
-                        f"**#{i} • t={row['timestamp_sec']}s • "
-                        f"score={score:.3f} ({score_label(score)} match)**"
-                    )
-                    r1, r2 = st.columns([2, 1])
-                    with r1:
-                        st.write(row["text"])
-                    with r2:
-                        st.image(row["frame_path"], use_container_width=True)
+        st.session_state.search_results = runner.query(query, top_k=int(top_k), min_score=float(min_score))
     except Exception as exc:
+        st.session_state.search_results = None
         st.error(f"Search failed: {exc}")
+
+results = st.session_state.search_results
+if results is not None:
+    if not results:
+        st.warning("No results found. Build the index first or use a different query.")
+    else:
+        st.subheader("Search results")
+        for i, row in enumerate(results, 1):
+            with st.container(border=True):
+                score = float(row["score"])
+                st.markdown(
+                    f"**#{i} • t={row['timestamp_sec']}s • "
+                    f"score={score:.3f} ({score_label(score)} match)**"
+                )
+                r1, r2 = st.columns([2, 1])
+                with r1:
+                    st.write(row["text"])
+                    if st.button("▶ Play clip", key=f"play-{i}", use_container_width=True):
+                        st.session_state.playback_timestamp = int(float(row["timestamp_sec"]))
+                with r2:
+                    st.image(row["frame_path"], use_container_width=True)
+
+playback_timestamp = st.session_state.playback_timestamp
+active_video_path = st.session_state.active_video_path or video_path
+if playback_timestamp is not None and active_video_path:
+    st.subheader("Video playback")
+    st.caption(f"Jumped to {playback_timestamp}s")
+    st.video(active_video_path, start_time=playback_timestamp)
