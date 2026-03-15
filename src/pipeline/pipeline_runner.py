@@ -89,4 +89,16 @@ class PipelineRunner:
         q = self.embedder.encode([text])[0]
         results = run_similarity_search(store, q, top_k=top_k or int(search_cfg["top_k"]))
         effective_min_score = float(min_score if min_score is not None else search_cfg.get("min_score", 0.0))
-        return [row for row in results if float(row["score"]) >= effective_min_score]
+        filtered_results = [row for row in results if float(row["score"]) >= effective_min_score]
+        if filtered_results:
+            return filtered_results
+
+        if effective_min_score <= 0 or not results:
+            return results
+
+        relaxed_min_score = min(0.05, effective_min_score)
+        relaxed_results = [row for row in results if float(row["score"]) >= relaxed_min_score]
+        if relaxed_results:
+            return relaxed_results
+
+        return results[: min(3, len(results))]
