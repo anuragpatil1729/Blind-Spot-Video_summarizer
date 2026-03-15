@@ -72,7 +72,12 @@ class PipelineRunner:
             "ollama_enabled": effective_use_ollama,
         }
 
-    def query(self, text: str, top_k: int | None = None):
+    def query(
+        self,
+        text: str,
+        top_k: int | None = None,
+        min_score: float | None = None,
+    ):
         paths = self.config["paths"]
         search_cfg = self.config["search"]
         store = SimpleVectorStore(paths["index_file"])
@@ -82,4 +87,6 @@ class PipelineRunner:
             return []
 
         q = self.embedder.encode([text])[0]
-        return run_similarity_search(store, q, top_k=top_k or int(search_cfg["top_k"]))
+        results = run_similarity_search(store, q, top_k=top_k or int(search_cfg["top_k"]))
+        effective_min_score = float(min_score if min_score is not None else search_cfg.get("min_score", 0.0))
+        return [row for row in results if float(row["score"]) >= effective_min_score]
