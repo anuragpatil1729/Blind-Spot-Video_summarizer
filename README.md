@@ -2,19 +2,17 @@
 
 A local, privacy-friendly video understanding tool for driving footage.
 
-It samples frames from a video, captions each frame (with an optional Ollama vision model), builds a lightweight semantic index, and lets you search moments using natural language in both CLI and Streamlit UI.
+It samples frames from a video, captions each frame with an Ollama vision model, builds a lightweight semantic index, and lets you search moments using natural language in both CLI and Streamlit UI.
 
 ---
 
 ## Features
 
 - **Frame extraction** with `ffmpeg` (automatic placeholder fallback if decoder is unavailable).
-- **Scene caption generation**:
-  - Optional: Ollama multimodal captioning (e.g., `llava`).
-  - Default: built-in visual heuristic captioner.
+- **Scene caption generation** with Ollama multimodal captioning (default model: `llava`).
 - **Semantic retrieval** over captions using text embeddings.
 - **Interactive GUI** with build controls, upload support, and result previews.
-- **Graceful fallback behavior** when models or services are unavailable.
+- **Embedding fallback** to hash-based vectors if `sentence-transformers` cannot be loaded.
 
 ---
 
@@ -38,7 +36,8 @@ ui/streamlit_app.py    Streamlit GUI
 
 - Python 3.10+
 - `ffmpeg` + `ffprobe` on PATH (recommended)
-- Optional for richer captions: running Ollama server + vision model
+- Running Ollama server at `http://localhost:11434`
+- Ollama vision model installed (default: `llava`)
 
 Install Python dependencies:
 
@@ -56,11 +55,23 @@ If you prefer, use the included setup script:
 
 ## Quick Start (CLI)
 
+> The current pipeline requires Ollama to be running. Start it first:
+
+```bash
+ollama serve
+```
+
+In another terminal, pull the default model once:
+
+```bash
+ollama pull llava
+```
+
 1. Put a video at `data/videos/input.mp4` (or pass another path in UI).
 2. Build index and run a test query:
 
 ```bash
-python -m scripts.build_index --query "Text for Finding the timestamp" --min-score 0.20
+python -m scripts.build_index --query "car near right lane" --min-score 0.20
 ```
 
 Expected output includes:
@@ -112,7 +123,7 @@ Default runtime settings are in `configs/config.yaml`:
 
 - Confirm Ollama server is running (`http://localhost:11434` by default).
 - Ensure the selected vision model is installed (e.g., `llava`).
-- Disable Ollama toggle to use built-in fallback captioning.
+- If you changed Ollama host/port, update `configs/config.yaml` (`ollama.base_url`).
 
 ### 3) Embedding model download issues
 
@@ -125,4 +136,3 @@ Default runtime settings are in `configs/config.yaml`:
 
 - This repository is designed to run locally without cloud dependencies.
 - Search quality improves with clear footage and meaningful caption generation.
-
