@@ -1,18 +1,28 @@
 paths:
   video_path: data/videos/input.mp4
-  frames_dir: data/frames
-  captions_file: data/captions/captions.json
-  index_file: data/captions/index.json
+  frames_dir: data/frames/scenes
+  chroma_dir: data/index/chroma
+  chroma_collection: video_moments
+  clips_dir: artifacts/clips
+  artifacts_dir: artifacts
 
-sampling:
-  fps: 0.5
-  max_frames: 60
+scene_detection:
+  threshold: 27.0
+
+audio:
+  whisper_model: base
+
+ocr:
+  languages: ["en"]
+
+embeddings:
+  model: sentence-transformers/all-MiniLM-L6-v2
 
 ollama:
-  enabled: false
   base_url: http://localhost:11434
-  model: llava
+  vision_model: llava
+  query_model: llama3
+  agent_model: llama3
 
-search:
-  top_k: 5
-  min_score: 0.2
+performance:
+  max_scenes: 300

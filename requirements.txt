@@ -1,11 +1,11 @@
 numpy
-tqdm
 pillow
 requests
-
+pyyaml
+tqdm
 streamlit
-
 chromadb
 sentence-transformers
-
-pyyaml
+scenedetect[opencv]
+openai-whisper
+easyocr

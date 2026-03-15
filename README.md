@@ -1,138 +1,178 @@
-# Blind Spot Video Summarizer
+# Blind-Spot-Video_summarizer → Production Multimodal Video Intelligence
 
-A local, privacy-friendly video understanding tool for any footage.
+This repository is now a **multimodal RAG system for video moment retrieval**:
 
-It samples frames from a video, captions each frame with an Ollama vision model, builds a lightweight semantic index, and lets you search moments using natural language in both CLI and Streamlit UI.
+> "Google Search for Video Moments"
+
+You can ask:
+- "show the moment where a nun walks on the road"
+- "when does the car appear"
+- "find the scary scene"
+
+And the system returns:
+- timestamp(s)
+- representative frame(s)
+- semantic explanation
+- playable extracted clip(s)
 
 ---
 
-## Features
+## Architecture
 
-- **Frame extraction** with `ffmpeg` (automatic placeholder fallback if decoder is unavailable).
-- **Scene caption generation** with Ollama multimodal captioning (default model: `llava`).
-- **Semantic retrieval** over captions using text embeddings.
-- **Interactive GUI** with build controls, upload support, and result previews.
-- **Embedding fallback** to hash-based vectors if `sentence-transformers` cannot be loaded.
+```text
+VIDEO
+ ↓
+Scene Detection (PySceneDetect)
+ ↓
+Representative Frame Extraction (ffmpeg)
+ ↓
+Vision Captioning (LLaVA via Ollama)
+ ↓
+Audio Transcription (Whisper)
+ ↓
+OCR Text Extraction (EasyOCR)
+ ↓
+Embedding Generation (all-MiniLM-L6-v2)
+ ↓
+Vector Database (ChromaDB)
+ ↓
+Semantic Search + Query Rewriting + Cross-Encoder Rerank
+ ↓
+Agentic Answering (Llama3 via Ollama)
+```
 
 ---
 
 ## Project Structure
 
 ```text
-configs/               Runtime configuration
-scripts/               CLI entry points
 src/
-  embeddings/          Text embedding + vector store
-  ollama/              Ollama API client + vision captioner
-  pipeline/            Build pipeline logic
-  search/              Query encoding + similarity search
-  utils/               Shared file/video utilities
-ui/streamlit_app.py    Streamlit GUI
+  video_processing/
+    scene_detection.py
+    frame_extractor.py
+  vision/
+    llava_captioner.py
+  audio/
+    whisper_transcriber.py
+  ocr/
+    ocr_extractor.py
+  embeddings/
+    embedder.py
+  search/
+    vector_store.py
+    semantic_search.py
+    reranker.py
+    query_understanding.py
+  agents/
+    video_agent.py
+  pipeline/
+    pipeline_runner.py
+  ui/
+    streamlit_app.py
+ui/
+  streamlit_app.py  # launcher wrapper
+scripts/
+  build_index.py
+configs/
+  config.yaml
 ```
 
 ---
 
-## Requirements
+## Setup
+
+### 1) System dependencies
 
 - Python 3.10+
-- `ffmpeg` + `ffprobe` on PATH (recommended)
-- Running Ollama server at `http://localhost:11434`
-- Ollama vision model installed (default: `llava`)
+- `ffmpeg` and `ffprobe`
+- Ollama running locally
 
-Install Python dependencies:
+Install Python deps:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-If you prefer, use the included setup script:
-
-```bash
-./setup.sh
-```
-
----
-
-## Quick Start (CLI)
-
-> The current pipeline requires Ollama to be running. Start it first:
+### 2) Start Ollama and pull models
 
 ```bash
 ollama serve
-```
-
-In another terminal, pull the default model once:
-
-```bash
 ollama pull llava
+ollama pull llama3
 ```
-
-1. Put a video at `data/videos/input.mp4` (or pass another path in UI).
-2. Build index and run a test query:
-
-```bash
-python -m scripts.build_index --query "person holding an object" --min-score 0.20
-```
-
-Expected output includes:
-
-- Build stats (frames, captions, index path)
-- Top semantic matches with score + timestamp
 
 ---
 
-## Quick Start (GUI)
+## Example dataset
 
-Run:
+Default video path:
+
+```text
+data/videos/input.mp4
+```
+
+Replace this file with your own source video (up to ~30 minutes recommended).
+
+---
+
+## Run CLI demo
+
+```bash
+python -m scripts.build_index --video data/videos/input.mp4 --query "when does the car appear" --top-k 5
+```
+
+Outputs ranked moments with timestamps + captions.
+
+---
+
+## Run Streamlit app
 
 ```bash
 streamlit run ui/streamlit_app.py
 ```
 
-Then in the app:
-
-1. Optionally upload a video.
-2. Adjust FPS / max frames / Ollama settings.
-3. Click **Build / Rebuild Index**.
-4. Enter a natural-language query and click **Search**.
+UI features:
+- Video upload
+- Full indexing pipeline trigger
+- Semantic search
+- Timeline explorer
+- Frame previews
+- One-click clip extraction/playback
+- Agentic question answering ("What happens in this video?")
 
 ---
 
-## Configuration
+## Production notes
 
-Default runtime settings are in `configs/config.yaml`:
-
-- `paths.video_path`: input video path
-- `sampling.fps`: extracted frames per second
-- `sampling.max_frames`: cap on extracted frames
-- `ollama.enabled`: enable multimodal captioning
-- `search.top_k`: default result count
-- `search.min_score`: minimum cosine similarity threshold (filters weak matches)
+- **Scene detection first** reduces redundant frames and increases semantic precision.
+- **Batch embeddings** are used for indexing throughput.
+- **Two-stage retrieval**: vector recall + cross-encoder rerank for stronger precision.
+- **Multimodal context fusion**: caption + OCR + aligned transcript at each scene timestamp.
+- **Agent mode** grounds answers in top retrieved evidence.
 
 ---
 
 ## Troubleshooting
 
-### 1) "It still doesn’t work" / no useful frames
+1. **Ollama timeouts**
+   - Ensure `ollama serve` is active.
+   - Confirm models are pulled (`llava`, `llama3`).
 
-- Verify the input video path exists and is readable.
-- If `ffmpeg` fails, the app generates a placeholder frame so pipeline still runs.
-- Try a short MP4 first to validate end-to-end behavior.
+2. **Whisper/EasyOCR install size**
+   - These are heavy dependencies; use a virtual environment.
 
-### 2) Ollama captions not appearing
+3. **No scenes detected**
+   - Pipeline auto-falls back to fixed time chunks.
 
-- Confirm Ollama server is running (`http://localhost:11434` by default).
-- Ensure the selected vision model is installed (e.g., `llava`).
-- If you changed Ollama host/port, update `configs/config.yaml` (`ollama.base_url`).
-
-### 3) Embedding model download issues
-
-- The system automatically falls back to hash embeddings if `sentence-transformers` is unavailable.
-- You can still build and search, with lower semantic quality.
+4. **Slow indexing on long videos**
+   - Lower scene count via `performance.max_scenes` in `configs/config.yaml`.
 
 ---
 
-## Notes
+## Demo workflow
 
-- This repository is designed to run locally without cloud dependencies.
-- Search quality improves with clear footage and meaningful caption generation.
+1. Upload (or point to) a video.
+2. Click **Process & Index**.
+3. Query naturally: "nun walking on roadside".
+4. Inspect top matches and play extracted clip.
+5. Ask the AI Video Agent: "What happens in this video?"
