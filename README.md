@@ -56,11 +56,11 @@ If you prefer, use the included setup script:
 
 ## Quick Start (CLI)
 
-1. Put a driving video at `data/videos/input.mp4` (or pass another path in UI).
+1. Put a video at `data/videos/input.mp4` (or pass another path in UI).
 2. Build index and run a test query:
 
 ```bash
-python -m scripts.build_index --query "car in adjacent lane" --min-score 0.20
+python -m scripts.build_index --query "Text for Finding the timestamp" --min-score 0.20
 ```
 
 Expected output includes:
