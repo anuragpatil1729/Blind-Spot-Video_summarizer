@@ -38,7 +38,7 @@ st.markdown(
 )
 
 st.title("🚗 Blind Spot Video Summarizer")
-st.caption("Build a searchable scene index from driving footage and quickly inspect relevant moments.")
+st.caption("Build a searchable scene index from any video and quickly inspect relevant moments.")
 
 runner = PipelineRunner()
 
@@ -109,7 +109,7 @@ st.divider()
 
 search_col, options_col = st.columns([3, 1])
 with search_col:
-    query = st.text_input("Search scene description", "car near right lane")
+    query = st.text_input("Search scene description", "people, objects, or events I should review")
 with options_col:
     top_k = st.number_input("Top K", min_value=1, max_value=20, value=int(runner.config["search"]["top_k"]))
     min_score = st.slider(

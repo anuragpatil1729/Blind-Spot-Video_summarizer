@@ -33,12 +33,13 @@ def _print_results(results: list[dict]):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--query", default="car on the side")
+    parser.add_argument("--query", default="important activity in the video")
     parser.add_argument("--min-score", type=float, default=None)
+    parser.add_argument("--ollama-model", default=None)
     args = parser.parse_args()
 
     runner = PipelineRunner()
-    build_result = runner.build()
+    build_result = runner.build(ollama_model=args.ollama_model)
     print("Build complete")
     print(
         f"Frames: {build_result['frames']} | "
