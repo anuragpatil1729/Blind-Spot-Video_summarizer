@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
@@ -26,7 +27,9 @@ class PipelineRunner:
         video_path: str | None = None,
         fps: float | None = None,
         max_frames: int | None = None,
+        use_ollama: bool | None = None,
         ollama_base_url: str | None = None,
+        ollama_model: str | None = None,
     ) -> dict[str, Any]:
         paths = self.config["paths"]
         sampling = self.config["sampling"]
@@ -43,17 +46,24 @@ class PipelineRunner:
             max_frames=effective_max_frames,
         )
 
-        captioner = VisionCaptioner(base_url=ollama_base_url or ollama_cfg["base_url"])
+        if not bool(use_ollama if use_ollama is not None else ollama_cfg.get("enabled", True)):
+            raise RuntimeError("Ollama captioning is disabled. Enable it to build a searchable index.")
+
+        captioner = VisionCaptioner(
+            base_url=ollama_base_url or ollama_cfg["base_url"],
+            model=ollama_model or ollama_cfg.get("model", "llava"),
+        )
         captions = generate_captions(frames, captioner)
         save_json(paths["captions_file"], captions)
 
-        texts = [c["caption"] for c in captions]
+        raw_captions = [c["caption"] for c in captions]
+        texts = [_build_search_text(c) for c in raw_captions]
         frame_paths = [c["frame_path"] for c in captions]
         timestamps = [c["timestamp_sec"] for c in captions]
 
         embeddings = self.embedder.encode(texts)
         store = SimpleVectorStore(paths["index_file"])
-        store.add_many(texts, frame_paths, timestamps, embeddings)
+        store.add_many(texts, frame_paths, timestamps, embeddings, captions=raw_captions)
         store.save()
         return {
             "frames": len(frames),
@@ -63,6 +73,7 @@ class PipelineRunner:
             "fps": effective_fps,
             "max_frames": effective_max_frames,
             "ollama_enabled": True,
+            "ollama_model": ollama_model or ollama_cfg.get("model", "llava"),
         }
 
     def query(
@@ -95,3 +106,24 @@ class PipelineRunner:
             return relaxed_results
 
         return results[: min(3, len(results))]
+
+
+_STOPWORDS = {
+    "the", "and", "for", "with", "from", "into", "this", "that", "there", "where", "about", "image", "frame", "video", "appears", "show", "shows", "visible", "likely",
+}
+
+
+def _build_search_text(caption: str) -> str:
+    tokens = re.findall(r"[a-zA-Z0-9][a-zA-Z0-9\-']+", caption.lower())
+    keywords: list[str] = []
+    for token in tokens:
+        if len(token) < 3 or token in _STOPWORDS:
+            continue
+        if token not in keywords:
+            keywords.append(token)
+        if len(keywords) >= 24:
+            break
+
+    if not keywords:
+        return caption
+    return f"{caption}\nkeywords: {', '.join(keywords)}"

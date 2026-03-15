@@ -10,6 +10,7 @@ from src.utils.file_utils import load_json, save_json
 
 @dataclass
 class VectorItem:
+    caption: str
     text: str
     frame_path: str
     timestamp_sec: float
@@ -21,10 +22,19 @@ class SimpleVectorStore:
         self.index_file = index_file
         self.items: List[VectorItem] = []
 
-    def add_many(self, texts: list[str], frame_paths: list[str], timestamps: list[float], embeddings: np.ndarray):
+    def add_many(
+        self,
+        texts: list[str],
+        frame_paths: list[str],
+        timestamps: list[float],
+        embeddings: np.ndarray,
+        captions: list[str] | None = None,
+    ):
+        captions = captions or texts
         for i, text in enumerate(texts):
             self.items.append(
                 VectorItem(
+                    caption=captions[i],
                     text=text,
                     frame_path=frame_paths[i],
                     timestamp_sec=float(timestamps[i]),
@@ -37,7 +47,12 @@ class SimpleVectorStore:
 
     def load(self):
         rows = load_json(self.index_file, default=[])
-        self.items = [VectorItem(**row) for row in rows]
+        normalized = []
+        for row in rows:
+            if "caption" not in row:
+                row["caption"] = row.get("text", "")
+            normalized.append(VectorItem(**row))
+        self.items = normalized
 
     def search(self, query_embedding: np.ndarray, top_k: int = 5):
         if not self.items:
@@ -53,7 +68,7 @@ class SimpleVectorStore:
         return [
             {
                 "score": round(score, 4),
-                "text": item.text,
+                "text": item.caption,
                 "frame_path": item.frame_path,
                 "timestamp_sec": item.timestamp_sec,
             }

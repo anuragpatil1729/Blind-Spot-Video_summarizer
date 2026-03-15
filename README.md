@@ -1,6 +1,6 @@
 # Blind Spot Video Summarizer
 
-A local, privacy-friendly video understanding tool for driving footage.
+A local, privacy-friendly video understanding tool for any footage.
 
 It samples frames from a video, captions each frame with an Ollama vision model, builds a lightweight semantic index, and lets you search moments using natural language in both CLI and Streamlit UI.
 
@@ -71,7 +71,7 @@ ollama pull llava
 2. Build index and run a test query:
 
 ```bash
-python -m scripts.build_index --query "car near right lane" --min-score 0.20
+python -m scripts.build_index --query "person holding an object" --min-score 0.20
 ```
 
 Expected output includes:
