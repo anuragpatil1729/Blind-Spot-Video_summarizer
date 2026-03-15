@@ -26,9 +26,7 @@ class PipelineRunner:
         video_path: str | None = None,
         fps: float | None = None,
         max_frames: int | None = None,
-        use_ollama: bool | None = None,
         ollama_base_url: str | None = None,
-        ollama_model: str | None = None,
     ) -> dict[str, Any]:
         paths = self.config["paths"]
         sampling = self.config["sampling"]
@@ -37,7 +35,6 @@ class PipelineRunner:
         effective_video_path = video_path or paths["video_path"]
         effective_fps = float(fps if fps is not None else sampling["fps"])
         effective_max_frames = int(max_frames if max_frames is not None else sampling["max_frames"])
-        effective_use_ollama = bool(use_ollama if use_ollama is not None else ollama_cfg["enabled"])
 
         frames = sample_frames(
             effective_video_path,
@@ -46,11 +43,7 @@ class PipelineRunner:
             max_frames=effective_max_frames,
         )
 
-        captioner = VisionCaptioner(
-            use_ollama=effective_use_ollama,
-            base_url=ollama_base_url or ollama_cfg["base_url"],
-            model=ollama_model or ollama_cfg["model"],
-        )
+        captioner = VisionCaptioner(base_url=ollama_base_url or ollama_cfg["base_url"])
         captions = generate_captions(frames, captioner)
         save_json(paths["captions_file"], captions)
 
@@ -69,7 +62,7 @@ class PipelineRunner:
             "video_path": effective_video_path,
             "fps": effective_fps,
             "max_frames": effective_max_frames,
-            "ollama_enabled": effective_use_ollama,
+            "ollama_enabled": True,
         }
 
     def query(
