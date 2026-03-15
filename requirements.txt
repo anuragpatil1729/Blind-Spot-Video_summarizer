@@ -1,0 +1,12 @@
+opencv-python
+numpy
+tqdm
+pillow
+requests
+
+streamlit
+
+chromadb
+sentence-transformers
+
+pyyaml
