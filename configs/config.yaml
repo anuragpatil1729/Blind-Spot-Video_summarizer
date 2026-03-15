@@ -1,0 +1,17 @@
+paths:
+  video_path: data/videos/input.mp4
+  frames_dir: data/frames
+  captions_file: data/captions/captions.json
+  index_file: data/captions/index.json
+
+sampling:
+  fps: 0.5
+  max_frames: 60
+
+ollama:
+  enabled: false
+  base_url: http://localhost:11434
+  model: llava
+
+search:
+  top_k: 5
