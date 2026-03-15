@@ -11,6 +11,14 @@ if str(ROOT) not in sys.path:
 
 from src.pipeline.pipeline_runner import PipelineRunner
 
+
+def score_label(score: float) -> str:
+    if score >= 0.75:
+        return "high"
+    if score >= 0.45:
+        return "medium"
+    return "low"
+
 st.set_page_config(page_title="Blind Spot Video Summarizer", page_icon="🚗", layout="wide")
 
 st.markdown(
@@ -111,7 +119,11 @@ if st.button("🔎 Search", use_container_width=True):
             st.subheader("Search results")
             for i, row in enumerate(results, 1):
                 with st.container(border=True):
-                    st.markdown(f"**#{i} • t={row['timestamp_sec']}s • score={row['score']}**")
+                    score = float(row["score"])
+                    st.markdown(
+                        f"**#{i} • t={row['timestamp_sec']}s • "
+                        f"score={score:.3f} ({score_label(score)} match)**"
+                    )
                     r1, r2 = st.columns([2, 1])
                     with r1:
                         st.write(row["text"])
