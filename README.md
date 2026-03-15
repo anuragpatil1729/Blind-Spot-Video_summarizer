@@ -60,7 +60,7 @@ If you prefer, use the included setup script:
 2. Build index and run a test query:
 
 ```bash
-python -m scripts.build_index --query "car in adjacent lane"
+python -m scripts.build_index --query "car in adjacent lane" --min-score 0.20
 ```
 
 Expected output includes:
@@ -96,6 +96,7 @@ Default runtime settings are in `configs/config.yaml`:
 - `sampling.max_frames`: cap on extracted frames
 - `ollama.enabled`: enable multimodal captioning
 - `search.top_k`: default result count
+- `search.min_score`: minimum cosine similarity threshold (filters weak matches)
 
 ---
 

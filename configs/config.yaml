@@ -15,3 +15,4 @@ ollama:
 
 search:
   top_k: 5
+  min_score: 0.2

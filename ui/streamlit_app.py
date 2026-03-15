@@ -94,10 +94,17 @@ with search_col:
     query = st.text_input("Search scene description", "car near right lane")
 with options_col:
     top_k = st.number_input("Top K", min_value=1, max_value=20, value=int(runner.config["search"]["top_k"]))
+    min_score = st.slider(
+        "Min similarity",
+        min_value=0.0,
+        max_value=1.0,
+        value=float(runner.config["search"].get("min_score", 0.0)),
+        step=0.01,
+    )
 
 if st.button("🔎 Search", use_container_width=True):
     try:
-        results = runner.query(query, top_k=int(top_k))
+        results = runner.query(query, top_k=int(top_k), min_score=float(min_score))
         if not results:
             st.warning("No results found. Build the index first or use a different query.")
         else:
