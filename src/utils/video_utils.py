@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import subprocess
 from pathlib import Path
 
@@ -67,3 +68,75 @@ def extract_frames(video_path: str, output_dir: str, fps: float = 1.0, max_frame
         return _extract_with_ffmpeg(video_path, out_dir, fps, max_frames)
     except Exception:
         return _write_placeholder(out_dir)
+
+
+def build_combined_clip(
+    video_path: str,
+    timestamps: list[float],
+    output_path: str,
+    clip_duration_sec: float = 2.0,
+) -> str | None:
+    if not timestamps:
+        return None
+
+    source = Path(video_path)
+    if not source.exists():
+        return None
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    unique_timestamps: list[float] = []
+    for ts in sorted(float(t) for t in timestamps):
+        if not unique_timestamps or abs(ts - unique_timestamps[-1]) > 0.01:
+            unique_timestamps.append(max(ts, 0.0))
+
+    if not unique_timestamps:
+        return None
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="clip_concat_"))
+    segment_files: list[Path] = []
+
+    try:
+        for idx, ts in enumerate(unique_timestamps, 1):
+            segment_path = tmp_dir / f"segment_{idx:03d}.mp4"
+            segment_cmd = [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                f"{ts:.3f}",
+                "-i",
+                str(source),
+                "-t",
+                f"{clip_duration_sec:.2f}",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-an",
+                str(segment_path),
+            ]
+            subprocess.run(segment_cmd, check=True, capture_output=True, text=True)
+            segment_files.append(segment_path)
+
+        concat_list = tmp_dir / "concat_list.txt"
+        concat_lines = [f"file '{segment.resolve()}'" for segment in segment_files]
+        concat_list.write_text("\n".join(concat_lines), encoding="utf-8")
+
+        concat_cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_list),
+            "-c",
+            "copy",
+            str(output),
+        ]
+        subprocess.run(concat_cmd, check=True, capture_output=True, text=True)
+        return str(output)
+    except Exception:
+        return None
